@@ -1,0 +1,21 @@
+{
+  "name": "become-ai-engineer-workshop",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@10.34.7",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "prepare": "node scripts/install-hooks.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node --test scripts/tests/*.test.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "format:push": "node scripts/check-push.mjs --head"
+  },
+  "devDependencies": {
+    "cross-spawn": "7.0.6",
+    "prettier": "3.9.10"
+  }
+}

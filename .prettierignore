@@ -1,0 +1,7 @@
+node_modules/
+dist/
+scratchpad/
+secrets/
+pnpm-lock.yaml
+.prettierrc
+.editorconfig
