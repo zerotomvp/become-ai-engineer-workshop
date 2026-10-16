@@ -41,8 +41,13 @@ Building Reliable AI Features in TypeScript
 - **Audience:** TypeScript developers who have called a model API, or are about to be asked to, and need AI features they can change without guessing.
 - **Prerequisites:** comfortable with TypeScript and model APIs; no machine-learning background needed.
 
-## Repository status
+## Getting started
 
-The workspace is being prepared for CityJS Athens on 21 October 2026. The workshop application is not built yet.
+You need Node.js 22.18+, Git, and pnpm 10.34.7.
 
-Requires Node.js 22+, Git, and pnpm 10.34.7. Run `pnpm install --frozen-lockfile` and `pnpm check` to check the workspace scaffold.
+1. Run `pnpm install --frozen-lockfile`.
+2. Copy `.env.example` to `.env` and paste the workshop key from the attendee page.
+3. Run `pnpm setup-check`. It checks Node, the dependencies, the seeded data and the model gateway.
+4. Run `pnpm dev` and open <http://localhost:5173>.
+
+The lab is a dashboard over a mock payments API. Pick a failed request and ask the feature to explain it.

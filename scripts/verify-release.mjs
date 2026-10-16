@@ -34,7 +34,7 @@ const run = (command, args, cwd) => {
 function patchPath(patch) {
   assert.match(
     patch.path,
-    /^patches\/(phase-[1-6]|ext-[1-9]\d*)\.(cumulative|incremental)\.patch$/
+    /^patches\/(phase-[0-6]|ext-[1-9]\d*)\.(cumulative|incremental)\.patch$/
   )
   assert.match(patch.sha256, /^[a-f0-9]{64}$/)
   const path = join(bundle, patch.path)
@@ -51,26 +51,32 @@ for (const phase of manifest.phases) {
   assert.match(phase.tree, /^[a-f0-9]{40,64}$/)
   assert(Array.isArray(phase.check) && phase.check.length)
   assert(phase.check.every(part => typeof part === 'string' && part.length))
+  // Phase 0 is a patch on the public base, like every other phase.
   if (phase.id === 'phase-0') {
-    assert.equal(phase.cumulative, null)
-    assert.equal(phase.incremental, null)
-    continue
+    assert.equal(phase.incrementalFrom, null)
+  } else {
+    assert.equal(
+      phase.incrementalFrom,
+      phase.id.startsWith('ext-')
+        ? 'phase-6'
+        : `phase-${Number(phase.id.slice(6)) - 1}`
+    )
+    assert(manifest.phases.some(parent => parent.id === phase.incrementalFrom))
   }
-  assert.equal(
-    phase.incrementalFrom,
-    phase.id.startsWith('ext-')
-      ? 'phase-6'
-      : `phase-${Number(phase.id.slice(6)) - 1}`
-  )
-  assert(manifest.phases.some(parent => parent.id === phase.incrementalFrom))
   patchPath(phase.cumulative)
   patchPath(phase.incremental)
 }
 mkdirSync('scratchpad', { recursive: true })
 const work = mkdtempSync(join(resolve('scratchpad'), 'verify-release-'))
 try {
-  for (const phase of manifest.phases) {
-    for (const mode of phase.id === 'phase-0'
+  // The public base itself, then each phase both ways.
+  const base = {
+    id: 'base',
+    tree: manifest.publicBase.tree,
+    check: manifest.phases[0].check,
+  }
+  for (const phase of [base, ...manifest.phases]) {
+    for (const mode of phase === base
       ? ['base']
       : ['cumulative', 'incremental']) {
       const clone = join(work, `${phase.id}-${mode}`)
@@ -93,7 +99,7 @@ try {
         )
         run('git', ['apply', '--index', '--allow-empty', path], clone)
       }
-      if (mode === 'incremental' && phase.incrementalFrom !== 'phase-0') {
+      if (mode === 'incremental' && phase.incrementalFrom) {
         apply(
           manifest.phases.find(parent => parent.id === phase.incrementalFrom)
             .cumulative

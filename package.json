@@ -4,11 +4,16 @@
   "version": "0.0.0",
   "packageManager": "pnpm@10.34.7",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.18"
   },
   "scripts": {
     "prepare": "node scripts/install-hooks.mjs",
-    "check": "node scripts/check.mjs",
+    "dev": "pnpm --recursive --parallel dev",
+    "setup-check": "node --env-file-if-exists=.env scripts/setup-check.mjs",
+    "import-patches": "node scripts/import-patches.mjs",
+    "time-travel": "node scripts/time-travel.mjs",
+    "show-solution": "node scripts/show-solution.mjs",
+    "check": "node scripts/check.mjs && pnpm --recursive typecheck && pnpm --recursive test",
     "test": "node --test scripts/tests/*.test.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
