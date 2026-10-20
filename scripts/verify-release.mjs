@@ -8,7 +8,9 @@ if (process.argv.includes('--help') || !process.argv[2]) {
   console.error(
     'Usage: node scripts/verify-release.mjs EXTRACTED_BUNDLE [PUBLIC_REMOTE]'
   )
-  console.error('Verifies every checksum and both patch paths in fresh clones.')
+  console.error(
+    'Verifies every checksum, each phase end and each solution in fresh clones.'
+  )
   process.exit(process.argv.includes('--help') ? 0 : 1)
 }
 const bundle = resolve(process.argv[2])
@@ -64,12 +66,19 @@ for (const phase of manifest.phases) {
     assert(manifest.phases.some(parent => parent.id === phase.incrementalFrom))
   }
   patchPath(phase.cumulative)
-  patchPath(phase.incremental)
+  if (phase.incremental) {
+    patchPath(phase.incremental)
+    assert.match(phase.solution.tree, /^[a-f0-9]{40,64}$/)
+  } else {
+    // Phase 0 has no code to write, so it has no solution patch.
+    assert.equal(phase.id, 'phase-0')
+  }
 }
 mkdirSync('scratchpad', { recursive: true })
 const work = mkdtempSync(join(resolve('scratchpad'), 'verify-release-'))
 try {
-  // The public base itself, then each phase both ways.
+  // The public base itself, then each phase's end and its solution: the
+  // incremental patch on the previous phase's end.
   const base = {
     id: 'base',
     tree: manifest.publicBase.tree,
@@ -78,7 +87,9 @@ try {
   for (const phase of [base, ...manifest.phases]) {
     for (const mode of phase === base
       ? ['base']
-      : ['cumulative', 'incremental']) {
+      : phase.incremental
+        ? ['cumulative', 'incremental']
+        : ['cumulative']) {
       const clone = join(work, `${phase.id}-${mode}`)
       run('git', [
         '-c',
@@ -106,7 +117,10 @@ try {
         )
       }
       if (mode !== 'base') apply(phase[mode])
-      assert.equal(run('git', ['write-tree'], clone), phase.tree)
+      assert.equal(
+        run('git', ['write-tree'], clone),
+        mode === 'incremental' ? phase.solution.tree : phase.tree
+      )
       run('pnpm', ['install', '--frozen-lockfile'], clone)
       run(phase.check[0], phase.check.slice(1), clone)
       run('git', ['diff', '--exit-code'], clone)

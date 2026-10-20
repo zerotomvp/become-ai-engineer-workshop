@@ -1,5 +1,6 @@
 // Opens the suggested solution for one phase, its incremental patch, in
-// diff2html in the browser.
+// diff2html in the browser: only what the phase asks you to write, without
+// the next phase's starting point.
 // Run it with `pnpm show-solution PHASE`, for example `pnpm show-solution 3`.
 // Extra arguments go to diff2html, for example `-s line` for one column.
 import {
@@ -16,7 +17,7 @@ const manifest = loadManifest()
 await checkForUpdate(manifest)
 const phase = findPhase(manifest, name)
 if (!phase.incremental)
-  fail(`${phase.id} is the starting point; it has no solution to show.`)
+  fail(`${phase.id} has no code to write, so it has no solution to show.`)
 
 const patch = verifiedPatch(phase.incremental)
 console.log(

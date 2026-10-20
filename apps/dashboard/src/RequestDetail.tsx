@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Replay } from './Replay.tsx'
 import type { Explanation, LoggedRequest } from './types.ts'
 
 interface Props {
@@ -41,6 +42,7 @@ export function RequestDetail({
       <pre>{JSON.stringify(request.body, null, 2)}</pre>
       <h3>Response {request.status}</h3>
       <pre>{JSON.stringify(request.response, null, 2)}</pre>
+      <Replay key={request.id} request={request} />
 
       <div className="actions">
         <button onClick={explain} disabled={loading}>

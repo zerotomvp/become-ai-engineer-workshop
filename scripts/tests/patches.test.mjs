@@ -49,6 +49,7 @@ writeFileSync(join(source, 'lab.txt'), 'typed\n')
 writeFileSync(join(source, 'contract.txt'), 'four outcomes\n')
 git(source, 'add', '.')
 git(source, 'commit', '--quiet', '-m', 'phase 1')
+const phase1 = git(source, 'rev-parse', 'HEAD')
 const phase1Tree = git(source, 'rev-parse', 'HEAD^{tree}')
 const diff = from => `${git(source, 'diff', '--binary', from, 'HEAD')}\n`
 const patch = diff(base)
@@ -77,10 +78,9 @@ const manifest = {
       tree: phase0Tree,
       incrementalFrom: null,
       cumulative: phase0Entry,
-      incremental: {
-        ...phase0Entry,
-        path: 'patches/phase-0.incremental.patch',
-      },
+      // Phase 0 has no code to write, so it has no solution patch.
+      incremental: null,
+      solution: null,
     },
     {
       id: 'phase-1',
@@ -92,13 +92,13 @@ const manifest = {
         path: 'patches/phase-1.incremental.patch',
         sha256: sha256(phase1Incremental),
       },
+      solution: { sourceCommit: phase1, tree: phase1Tree },
     },
   ],
 }
 const files = {
   'manifest.json': JSON.stringify(manifest),
   'patches/phase-0.cumulative.patch': phase0Patch,
-  'patches/phase-0.incremental.patch': phase0Patch,
   'patches/phase-1.cumulative.patch': patch,
   'patches/phase-1.incremental.patch': phase1Incremental,
 }
@@ -230,6 +230,12 @@ test('time travel saves commits and changes once the attendee confirms', async (
   assert.equal(git(clone, 'rev-parse', branch), mine)
   assert.match(git(clone, 'stash', 'list'), /Before time travel to phase-1/)
   assert(!existsSync(join(clone, 'notes.txt')))
+})
+
+test('show solution says phase 0 has no solution', async () => {
+  const result = await script('show-solution', ['0'])
+  assert.equal(result.status, 1)
+  assert.match(result.stderr, /phase-0 has no code to write/)
 })
 
 test('time travel and show solution refuse a damaged patch', async () => {
