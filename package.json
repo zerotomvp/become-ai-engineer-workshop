@@ -8,7 +8,7 @@
   },
   "scripts": {
     "prepare": "node scripts/install-hooks.mjs",
-    "dev": "pnpm --recursive --parallel dev",
+    "dev": "node scripts/dev.mjs",
     "setup-check": "node --env-file-if-exists=.env scripts/setup-check.mjs",
     "import-patches": "node scripts/import-patches.mjs",
     "time-travel": "node scripts/time-travel.mjs",

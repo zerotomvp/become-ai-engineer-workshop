@@ -32,6 +32,7 @@ h1 {
 .log button {
   display: grid;
   grid-template-columns: auto 1fr;
+  align-items: baseline;
   gap: 0.2rem 0.6rem;
   width: 100%;
   padding: 0.6rem 1rem;
@@ -50,12 +51,20 @@ h1 {
 
 .log code,
 .log small {
-  grid-column: 2;
   color: #666;
 }
 
+.log small {
+  grid-column: 1 / -1;
+}
+
+.log .id {
+  font:
+    600 0.95rem ui-monospace,
+    monospace;
+}
+
 .status {
-  grid-row: span 3;
   font-weight: 600;
   color: #c0392b;
 }

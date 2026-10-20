@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title><!--diff2html-title--></title>
+
+    <!--
+      The diff2html-cli 5.2.15 wrapper template (template.html, by rtfpessoa),
+      plus long lines that wrap instead of scrolling sideways.
+    -->
+
+    <!--diff2html-css-->
+
+    <style>
+      /* Line numbers sit in their own column instead of floating over the
+         code, so they stay beside a line that wraps. */
+      .d2h-code-linenumber,
+      .d2h-code-side-linenumber {
+        display: table-cell;
+        position: static;
+      }
+      .d2h-file-side-diff {
+        overflow-x: hidden;
+      }
+      .d2h-code-line,
+      .d2h-code-side-line {
+        display: flex;
+        padding: 0 0.5em;
+        white-space: normal;
+        width: auto;
+      }
+      .d2h-code-line-prefix {
+        flex: none;
+      }
+      .d2h-diff-tbody td {
+        vertical-align: top;
+      }
+      /* Changed words are inline blocks, which would wrap as a whole. */
+      .d2h-code-line-ctn del,
+      .d2h-code-line-ctn ins {
+        display: inline;
+      }
+      .d2h-code-line-ctn {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    </style>
+
+    <!--diff2html-js-ui-->
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const targetElement = document.getElementById('diff')
+        const diff2htmlUi = new Diff2HtmlUI(targetElement)
+        //diff2html-fileListToggle
+        //diff2html-fileContentToggle
+        //diff2html-synchronisedScroll
+        //diff2html-highlightCode
+        alignSides()
+      })
+
+      // Side by side, the two sides are separate tables, so a line that wraps
+      // on one side would push the rows below it out of line with the other.
+      // Give each pair of rows the height of the taller one.
+      function alignSides() {
+        const pairs = []
+        for (const files of document.querySelectorAll('.d2h-files-diff')) {
+          const [left, right] = files.querySelectorAll('.d2h-diff-tbody')
+          if (!left || !right) continue
+          const rows = Math.min(left.rows.length, right.rows.length)
+          for (let i = 0; i < rows; i++)
+            pairs.push([left.rows[i], right.rows[i]])
+        }
+        for (const pair of pairs) for (const row of pair) row.style.height = ''
+        const heights = pairs.map(pair =>
+          Math.max(...pair.map(row => row.getBoundingClientRect().height))
+        )
+        pairs.forEach((pair, i) => {
+          for (const row of pair) row.style.height = `${heights[i]}px`
+        })
+      }
+      let resizing
+      window.addEventListener('resize', () => {
+        cancelAnimationFrame(resizing)
+        resizing = requestAnimationFrame(alignSides)
+      })
+      window.addEventListener('load', alignSides)
+    </script>
+  </head>
+  <body style="text-align: center; font-family: 'Source Sans Pro', sans-serif">
+    <h1><!--diff2html-header--></h1>
+
+    <div id="diff">
+      <!--diff2html-diff-->
+    </div>
+  </body>
+</html>

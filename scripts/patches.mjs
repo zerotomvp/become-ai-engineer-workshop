@@ -20,6 +20,12 @@ const versionUrl =
   process.env.ZEROTOMVP_VERSION_URL ??
   `https://zmvp-workshops.s3.fr-par.scw.cloud/public/${slug}/version.json`
 
+// Time travel touches this as its last step, with the phase it went to;
+// `pnpm dev` (scripts/dev.mjs) watches it to restart the lab. It is inside
+// node_modules, which Git ignores, so resets leave it alone.
+export const timeTravelMarker = root =>
+  join(root, 'node_modules', '.zerotomvp', 'time-travel')
+
 export const download = `Download the patch zip from the attendee page (${attendeePage}), then run: pnpm import-patches PATH_TO_ZIP`
 
 export function fail(message) {

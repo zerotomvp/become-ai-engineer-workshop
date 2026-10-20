@@ -11,7 +11,11 @@ export function App() {
   useEffect(() => {
     fetch('/lab/requests?status=failed')
       .then(response => response.json())
-      .then(({ data }) => setRequests(data))
+      // By id, as facilitators and the walkthroughs refer to them; the log
+      // itself lists the newest first.
+      .then(({ data }: { data: LoggedRequest[] }) =>
+        setRequests(data.toSorted((a, b) => a.id.localeCompare(b.id)))
+      )
     fetch('/api/models')
       .then(response => response.json())
       .then(models => {
@@ -31,14 +35,12 @@ export function App() {
                 className={request.id === selected?.id ? 'selected' : ''}
                 onClick={() => setSelected(request)}
               >
-                <span className="status">{request.status}</span>
-                <span>
-                  {request.method} {request.path}
-                </span>
+                <span className="id">{request.id}</span>
                 <code>{request.response.error?.code}</code>
                 <small>
-                  {request.id} · {request.account ?? 'no account'} ·{' '}
-                  {request.created.slice(0, 16).replace('T', ' ')}
+                  <span className="status">{request.status}</span>{' '}
+                  {request.method} {request.path} ·{' '}
+                  {request.account ?? 'no account'}
                 </small>
               </button>
             </li>

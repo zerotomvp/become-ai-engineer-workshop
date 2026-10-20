@@ -1,7 +1,8 @@
 // Moves this clone to the end of a phase: it resets the clone to the
 // workshop base and applies that phase's cumulative patch.
 // Run it with `pnpm time-travel PHASE`, for example `pnpm time-travel 3`.
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import spawn from 'cross-spawn'
 import {
@@ -10,6 +11,7 @@ import {
   findPhase,
   loadManifest,
   run,
+  timeTravelMarker,
   verifiedPatch,
 } from './patches.mjs'
 
@@ -94,7 +96,14 @@ if (lockfile() !== lockfileBefore || !existsSync('node_modules')) {
   run('pnpm', ['install', '--frozen-lockfile'], { stdio: 'inherit' })
 }
 
+// Last, once the code and dependencies are in place: a running `pnpm dev`
+// sees the marker change and restarts the lab.
+const marker = timeTravelMarker(process.cwd())
+mkdirSync(dirname(marker), { recursive: true })
+writeFileSync(marker, `${phase.id}\n`)
+
 console.log(`\nThis clone is now at the end of ${phase.id}: ${phase.title}.`)
+console.log('If `pnpm dev` is running, it restarts the lab on its own.')
 if (uncommitted)
   console.log(
     'Your uncommitted changes are in the stash: git stash pop brings them back.'

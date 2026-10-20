@@ -70,8 +70,10 @@ for (const phase of manifest.phases) {
     patchPath(phase.incremental)
     assert.match(phase.solution.tree, /^[a-f0-9]{40,64}$/)
   } else {
-    // Phase 0 has no code to write, so it has no solution patch.
-    assert.equal(phase.id, 'phase-0')
+    // A core phase with no code to write, such as phase 0, has no solution
+    // patch.
+    assert.match(phase.id, /^phase-\d$/)
+    assert.equal(phase.solution, null)
   }
 }
 mkdirSync('scratchpad', { recursive: true })

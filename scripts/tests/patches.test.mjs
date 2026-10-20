@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { createServer } from 'node:http'
-import { join, resolve } from 'node:path'
+import { delimiter, join, resolve } from 'node:path'
 import { crc32, deflateRawSync } from 'node:zlib'
 
 mkdirSync('scratchpad', { recursive: true })
@@ -115,7 +115,7 @@ const offline = 'http://127.0.0.1:9/version.json'
 function script(
   name,
   args,
-  { cwd = source, input = '', versionUrl = offline } = {}
+  { cwd = source, input = '', versionUrl = offline, env = {} } = {}
 ) {
   return new Promise(done => {
     const child = execFile(
@@ -127,6 +127,7 @@ function script(
           ...process.env,
           ZEROTOMVP_HOME: home,
           ZEROTOMVP_VERSION_URL: versionUrl,
+          ...env,
         },
       },
       (error, stdout, stderr) =>
@@ -182,7 +183,18 @@ test('time travel moves an untouched clone between phases without asking', async
   assert.equal(forward.status, 0, forward.stderr)
   assert.equal(git(clone, 'rev-parse', 'HEAD^{tree}'), phase1Tree)
   assert.equal(git(clone, 'status', '--porcelain'), '')
-  assert.match(forward.stdout, /now at the end of phase-1: The contract/)
+  assert.match(
+    forward.stdout,
+    /now at the end of phase-1: The contract\.\nIf `pnpm dev` is running, it restarts the lab on its own\./
+  )
+  // The marker a running `pnpm dev` watches, written last.
+  assert.equal(
+    readFileSync(
+      join(clone, 'node_modules', '.zerotomvp', 'time-travel'),
+      'utf8'
+    ),
+    'phase-1\n'
+  )
   const back = await script('time-travel', ['phase-0'], { cwd: clone })
   assert.equal(back.status, 0, back.stderr)
   assert.equal(git(clone, 'rev-parse', 'HEAD^{tree}'), phase0Tree)
@@ -232,10 +244,94 @@ test('time travel saves commits and changes once the attendee confirms', async (
   assert(!existsSync(join(clone, 'notes.txt')))
 })
 
-test('show solution says phase 0 has no solution', async () => {
+test('show solution says phase 0 has no solution, and succeeds', async () => {
   const result = await script('show-solution', ['0'])
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(
+    result.stdout,
+    /phase-0 has no code to write, so it has no solution to show\.\nTry `pnpm show-solution phase-1`\./
+  )
+})
+
+test('any phase with no code to write has no solution to show', async () => {
+  // A later phase without a solution, such as one run as a demonstration.
+  const demoHome = join(work, 'demo-home')
+  mkdirSync(join(demoHome, 'become-ai-engineer'), { recursive: true })
+  const phase = (id, incremental) => ({
+    ...manifest.phases[1],
+    id,
+    incremental,
+    solution: incremental && manifest.phases[1].solution,
+  })
+  writeFileSync(
+    join(demoHome, 'become-ai-engineer', 'manifest.json'),
+    JSON.stringify({
+      ...manifest,
+      phases: [
+        ...manifest.phases,
+        phase('phase-2', null),
+        phase('phase-3', manifest.phases[1].incremental),
+      ],
+    })
+  )
+  const result = await script('show-solution', ['2'], {
+    env: { ZEROTOMVP_HOME: demoHome },
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(
+    result.stdout,
+    /phase-2 has no code to write, so it has no solution to show\.\nTry `pnpm show-solution phase-3`\./
+  )
+})
+
+test('show solution opens the patch with lines that wrap', async () => {
+  // A stand-in npx on the PATH records what diff2html would be given.
+  const bin = join(work, 'bin')
+  mkdirSync(bin, { recursive: true })
+  const recorded = join(work, 'npx-args.json')
+  writeFileSync(
+    join(bin, 'fake-npx.mjs'),
+    `import { writeFileSync } from 'node:fs'\n` +
+      `writeFileSync(${JSON.stringify(recorded)}, JSON.stringify(process.argv.slice(2)))\n`
+  )
+  writeFileSync(
+    join(bin, 'npx'),
+    `#!/bin/sh\nexec "${process.execPath}" "$(dirname "$0")/fake-npx.mjs" "$@"\n`,
+    { mode: 0o755 }
+  )
+  writeFileSync(
+    join(bin, 'npx.cmd'),
+    `@"${process.execPath}" "%~dp0fake-npx.mjs" %*\r\n`
+  )
+  const path = `${bin}${delimiter}${process.env.PATH}`
+  const result = await script('show-solution', ['1'], {
+    env: { PATH: path, Path: path },
+  })
+  assert.equal(result.status, 0, result.stderr)
+  const args = JSON.parse(readFileSync(recorded, 'utf8'))
+  assert.deepEqual(args.slice(0, 4), [
+    '--yes',
+    'diff2html-cli@5.2.15',
+    '-s',
+    'side',
+  ])
+  const template = args[args.indexOf('--hwt') + 1]
+  assert.equal(template, resolve('scripts', 'show-solution.html'))
+  const html = readFileSync(template, 'utf8')
+  for (const placeholder of ['css', 'js-ui', 'diff', 'highlightCode'])
+    assert.match(html, new RegExp(`diff2html-${placeholder}`))
+  assert.match(html, /\.d2h-code-line-ctn \{[^}]*white-space: pre-wrap/)
+  assert.match(html, /\.d2h-code-line-ctn \{[^}]*overflow-wrap: anywhere/)
+  assert.deepEqual(args.slice(-2), [
+    '--',
+    join(home, 'become-ai-engineer', 'patches', 'phase-1.incremental.patch'),
+  ])
+})
+
+test('show solution fails for an unknown phase', async () => {
+  const result = await script('show-solution', ['9'])
   assert.equal(result.status, 1)
-  assert.match(result.stderr, /phase-0 has no code to write/)
+  assert.match(result.stderr, /Unknown phase 9/)
 })
 
 test('time travel and show solution refuse a damaged patch', async () => {

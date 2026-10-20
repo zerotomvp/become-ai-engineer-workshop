@@ -28,7 +28,7 @@ export function RequestDetail({
       body: JSON.stringify({ requestId: request.id, model }),
     })
     if (response.ok) setExplanation(await response.json())
-    else setError(`${response.status} ${await response.text()}`)
+    else setError(await failure(response))
     setLoading(false)
   }
 
@@ -79,3 +79,19 @@ export function RequestDetail({
     </section>
   )
 }
+
+// Why the explainer gave no answer: its own error, or the HTTP status when
+// it couldn't say, such as when it isn't running.
+async function failure(response: Response) {
+  const text = await response.text()
+  let message = `${response.status} ${text}`
+  try {
+    message = JSON.parse(text).message ?? message
+  } catch {
+    // Not the explainer's own error.
+  }
+  return failed(message)
+}
+
+const failed = (message: string) =>
+  `The explainer failed: ${message.replace(/\.$/, '')}. The pnpm dev terminal has the details.`
