@@ -34,8 +34,12 @@ function checkNode() {
 function checkDependencies() {
   const missing = []
   for (const app of readdirSync('apps')) {
+    // Time travel back can leave a later phase's folder, holding only
+    // ignored files; without a package.json it is no app.
+    const manifest = join('apps', app, 'package.json')
+    if (!existsSync(manifest)) continue
     const { dependencies = {}, devDependencies = {} } = JSON.parse(
-      readFileSync(join('apps', app, 'package.json'), 'utf8')
+      readFileSync(manifest, 'utf8')
     )
     for (const name of Object.keys({ ...dependencies, ...devDependencies })) {
       if (!existsSync(join('apps', app, 'node_modules', name))) {

@@ -9,21 +9,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import spawn from 'cross-spawn'
-import { timeTravelMarker } from './patches.mjs'
+import { timeTravelMarker, workspaceFolders } from './patches.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-
-// The workspace folders that hold apps, from pnpm-workspace.yaml's
-// `- folder/*` lines.
-function workspaceFolders(root) {
-  const path = join(root, 'pnpm-workspace.yaml')
-  if (!existsSync(path)) return []
-  return [
-    ...readFileSync(path, 'utf8').matchAll(
-      /^\s*-\s*['"]?([^'"\s*]+)\/\*['"]?\s*$/gm
-    ),
-  ].map(match => match[1])
-}
 
 // Every workspace package with a `dev` script, in a stable order.
 export function discoverApps(root) {

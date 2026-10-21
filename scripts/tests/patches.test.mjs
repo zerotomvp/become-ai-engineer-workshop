@@ -34,8 +34,13 @@ const sha256 = text => createHash('sha256').update(text).digest('hex')
 const source = join(work, 'source')
 mkdirSync(source)
 git(source, 'init', '--quiet', '--initial-branch=main')
-writeFileSync(join(source, '.gitignore'), 'node_modules/\n')
+writeFileSync(join(source, '.gitignore'), 'node_modules/\n*.log\n')
 writeFileSync(join(source, 'lab.txt'), 'fragile\n')
+// A workspace like the lab's, so time travel can leave a later phase's
+// folders behind.
+writeFileSync(join(source, 'pnpm-workspace.yaml'), 'packages:\n  - apps/*\n')
+mkdirSync(join(source, 'apps', 'lab'), { recursive: true })
+writeFileSync(join(source, 'apps', 'lab', 'package.json'), '{}\n')
 git(source, 'add', '.')
 git(source, 'commit', '--quiet', '-m', 'base')
 const base = git(source, 'rev-parse', 'HEAD')
@@ -47,6 +52,8 @@ const phase0 = git(source, 'rev-parse', 'HEAD')
 const phase0Tree = git(source, 'rev-parse', 'HEAD^{tree}')
 writeFileSync(join(source, 'lab.txt'), 'typed\n')
 writeFileSync(join(source, 'contract.txt'), 'four outcomes\n')
+mkdirSync(join(source, 'apps', 'evals'))
+writeFileSync(join(source, 'apps', 'evals', 'package.json'), '{}\n')
 git(source, 'add', '.')
 git(source, 'commit', '--quiet', '-m', 'phase 1')
 const phase1 = git(source, 'rev-parse', 'HEAD')
@@ -150,6 +157,10 @@ test('scripts say where to download the patches before any import', async () => 
     result.stderr,
     /No workshop patches found.*\n.*attendee page.*pnpm import-patches/
   )
+  assert.match(
+    result.stderr,
+    /attendee page \(https:\/\/zerotomvp\.dev\/workshops\/attend\?workshop=how-to-become-an-ai-engineer\)/
+  )
 })
 
 test('import rejects a zip whose patch does not match its checksum', async () => {
@@ -198,6 +209,39 @@ test('time travel moves an untouched clone between phases without asking', async
   const back = await script('time-travel', ['phase-0'], { cwd: clone })
   assert.equal(back.status, 0, back.stderr)
   assert.equal(git(clone, 'rev-parse', 'HEAD^{tree}'), phase0Tree)
+})
+
+test('time travel back clears the folders a later phase left behind', async () => {
+  const clone = attendeeClone('back')
+  const forward = await script('time-travel', ['1'], { cwd: clone })
+  assert.equal(forward.status, 0, forward.stderr)
+  // What pnpm install leaves in the phase's workspace folders.
+  for (const app of ['lab', 'evals'])
+    mkdirSync(join(clone, 'apps', app, 'node_modules', 'dep'), {
+      recursive: true,
+    })
+  const back = await script('time-travel', ['0'], { cwd: clone })
+  assert.equal(back.status, 0, back.stderr)
+  assert(!existsSync(join(clone, 'apps', 'evals')), 'evals is left behind')
+  assert(existsSync(join(clone, 'apps', 'lab', 'node_modules', 'dep')))
+  assert.equal(git(clone, 'status', '--porcelain'), '')
+})
+
+test('time travel back keeps other ignored files a later phase left', async () => {
+  const clone = attendeeClone('back-with-logs')
+  const forward = await script('time-travel', ['1'], { cwd: clone })
+  assert.equal(forward.status, 0, forward.stderr)
+  mkdirSync(join(clone, 'apps', 'evals', 'node_modules', 'dep'), {
+    recursive: true,
+  })
+  writeFileSync(join(clone, 'apps', 'evals', 'run.log'), 'mine\n')
+  const back = await script('time-travel', ['0'], { cwd: clone })
+  assert.equal(back.status, 0, back.stderr)
+  assert(!existsSync(join(clone, 'apps', 'evals', 'node_modules')))
+  assert.equal(
+    readFileSync(join(clone, 'apps', 'evals', 'run.log'), 'utf8'),
+    'mine\n'
+  )
 })
 
 test('time travel treats a fresh clone of the base as untouched', async () => {

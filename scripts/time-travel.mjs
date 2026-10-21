@@ -10,6 +10,7 @@ import {
   fail,
   findPhase,
   loadManifest,
+  removeUntrackedWorkspaces,
   run,
   timeTravelMarker,
   verifiedPatch,
@@ -92,6 +93,7 @@ if (patch) {
     `Time travel to ${phase.id}: ${phase.title}`
   )
 }
+removeUntrackedWorkspaces(process.cwd())
 if (lockfile() !== lockfileBefore || !existsSync('node_modules')) {
   run('pnpm', ['install', '--frozen-lockfile'], { stdio: 'inherit' })
 }

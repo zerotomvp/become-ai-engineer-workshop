@@ -3,14 +3,14 @@
 // into ~/.zerotomvp/<slug>/, outside the clone, so it survives `git clean`,
 // re-cloning and going offline.
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { inflateRawSync } from 'node:zlib'
 import spawn from 'cross-spawn'
 
 export const slug = 'how-to-become-an-ai-engineer'
-export const attendeePage = 'https://zerotomvp.dev/workshops/login'
+export const attendeePage = `https://zerotomvp.dev/workshops/attend?workshop=${slug}`
 // Tests point these at temporary folders and local servers.
 export const patchesDir = join(
   process.env.ZEROTOMVP_HOME ?? join(homedir(), '.zerotomvp'),
@@ -25,6 +25,36 @@ const versionUrl =
 // node_modules, which Git ignores, so resets leave it alone.
 export const timeTravelMarker = root =>
   join(root, 'node_modules', '.zerotomvp', 'time-travel')
+
+// The workspace folders that hold apps and packages, from
+// pnpm-workspace.yaml's `- folder/*` lines.
+export function workspaceFolders(root) {
+  const path = join(root, 'pnpm-workspace.yaml')
+  if (!existsSync(path)) return []
+  return [
+    ...readFileSync(path, 'utf8').matchAll(
+      /^\s*-\s*['"]?([^'"\s*]+)\/\*['"]?\s*$/gm
+    ),
+  ].map(match => match[1])
+}
+
+// Going back to an earlier phase leaves a later phase's workspace folders
+// behind, holding only the node_modules that pnpm put in them, which Git
+// ignores. Removes that node_modules from every workspace folder Git tracks
+// nothing in, and the folder once it is empty; other ignored files stay.
+export function removeUntrackedWorkspaces(root) {
+  for (const folder of workspaceFolders(root)) {
+    const parent = join(root, folder)
+    if (!existsSync(parent)) continue
+    for (const entry of readdirSync(parent, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue
+      const dir = join(parent, entry.name)
+      if (run('git', ['ls-files', '--', dir], { cwd: root })) continue
+      rmSync(join(dir, 'node_modules'), { recursive: true, force: true })
+      if (!readdirSync(dir).length) rmSync(dir, { recursive: true })
+    }
+  }
+}
 
 export const download = `Download the patch zip from the attendee page (${attendeePage}), then run: pnpm import-patches PATH_TO_ZIP`
 
