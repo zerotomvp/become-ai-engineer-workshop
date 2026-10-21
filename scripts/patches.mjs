@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { inflateRawSync } from 'node:zlib'
 import spawn from 'cross-spawn'
 
-export const slug = 'become-ai-engineer'
+export const slug = 'how-to-become-an-ai-engineer'
 export const attendeePage = 'https://zerotomvp.dev/workshops/login'
 // Tests point these at temporary folders and local servers.
 export const patchesDir = join(

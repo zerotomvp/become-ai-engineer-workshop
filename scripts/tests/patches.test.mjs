@@ -68,7 +68,7 @@ const phase0Entry = {
 }
 const manifest = {
   schemaVersion: 1,
-  slug: 'become-ai-engineer',
+  slug: 'how-to-become-an-ai-engineer',
   version: '1.0.0',
   publicBase: { commit: base, tree: baseTree, remote: source },
   phases: [
@@ -156,14 +156,14 @@ test('import rejects a zip whose patch does not match its checksum', async () =>
   const result = await script('import-patches', [damagedZip])
   assert.equal(result.status, 1)
   assert.match(result.stderr, /damaged: patches\/phase-1\.cumulative\.patch/)
-  assert(!existsSync(join(home, 'become-ai-engineer')))
+  assert(!existsSync(join(home, 'how-to-become-an-ai-engineer')))
 })
 
 test('import puts the verified patches in the home folder', async () => {
   const result = await script('import-patches', [goodZip])
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stdout, /Imported workshop patches 1\.0\.0/)
-  const imported = join(home, 'become-ai-engineer')
+  const imported = join(home, 'how-to-become-an-ai-engineer')
   assert.equal(readFileSync(join(imported, entry.path), 'utf8'), patch)
   assert.equal(result.stderr, '', 'offline, the version check stays silent')
 })
@@ -256,7 +256,7 @@ test('show solution says phase 0 has no solution, and succeeds', async () => {
 test('any phase with no code to write has no solution to show', async () => {
   // A later phase without a solution, such as one run as a demonstration.
   const demoHome = join(work, 'demo-home')
-  mkdirSync(join(demoHome, 'become-ai-engineer'), { recursive: true })
+  mkdirSync(join(demoHome, 'how-to-become-an-ai-engineer'), { recursive: true })
   const phase = (id, incremental) => ({
     ...manifest.phases[1],
     id,
@@ -264,7 +264,7 @@ test('any phase with no code to write has no solution to show', async () => {
     solution: incremental && manifest.phases[1].solution,
   })
   writeFileSync(
-    join(demoHome, 'become-ai-engineer', 'manifest.json'),
+    join(demoHome, 'how-to-become-an-ai-engineer', 'manifest.json'),
     JSON.stringify({
       ...manifest,
       phases: [
@@ -324,7 +324,12 @@ test('show solution opens the patch with lines that wrap', async () => {
   assert.match(html, /\.d2h-code-line-ctn \{[^}]*overflow-wrap: anywhere/)
   assert.deepEqual(args.slice(-2), [
     '--',
-    join(home, 'become-ai-engineer', 'patches', 'phase-1.incremental.patch'),
+    join(
+      home,
+      'how-to-become-an-ai-engineer',
+      'patches',
+      'phase-1.incremental.patch'
+    ),
   ])
 })
 
@@ -335,7 +340,7 @@ test('show solution fails for an unknown phase', async () => {
 })
 
 test('time travel and show solution refuse a damaged patch', async () => {
-  const imported = join(home, 'become-ai-engineer', 'patches')
+  const imported = join(home, 'how-to-become-an-ai-engineer', 'patches')
   for (const [name, kind] of [
     ['time-travel', 'cumulative'],
     ['show-solution', 'incremental'],
